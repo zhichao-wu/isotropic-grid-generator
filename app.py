@@ -2,22 +2,20 @@ import streamlit as st
 import json
 import zipfile
 import io
+from pathlib import Path
 
 # --------------------------------------------------
 # CONSTANTS
 # --------------------------------------------------
 
 ORIGINAL_IMAGE_SIZE = 1536
-ORIGINAL_CENTER = 768  # Grid was originally centered at 768,768
-
-
-# --------------------------------------------------
-# LOAD BASE GRIDS
-# --------------------------------------------------
-
-from pathlib import Path
+ORIGINAL_CENTER = 768
 
 BASE_DIR = Path(__file__).parent
+
+# --------------------------------------------------
+# LOAD BASE GRIDS (CACHED)
+# --------------------------------------------------
 
 @st.cache_data
 def load_grids():
@@ -30,11 +28,8 @@ def load_grids():
     return dmp, hdt
 
 
-dmp_data, hdt_data = load_grids()
-
-
 # --------------------------------------------------
-# GRID SHIFT FUNCTION (MATHEMATICALLY CORRECT)
+# GRID SHIFT FUNCTION
 # --------------------------------------------------
 
 def shift_grid(original_points, new_center_x, new_center_y, image_size):
@@ -45,23 +40,19 @@ def shift_grid(original_points, new_center_x, new_center_y, image_size):
     new_points = []
 
     for p in original_points:
-        # Convert original percentage back to pixel (1536 reference)
+
         old_x_pixel = p["x_perc"] * ORIGINAL_IMAGE_SIZE
         old_y_pixel = p["y_perc"] * ORIGINAL_IMAGE_SIZE
 
-        # Scale entire geometry if switching resolution
         old_x_pixel *= scale_factor
         old_y_pixel *= scale_factor
 
-        # Compute offset from scaled original center
         dx = old_x_pixel - scaled_old_center
         dy = old_y_pixel - scaled_old_center
 
-        # Apply shift to new center
         new_x_pixel = new_center_x + dx
         new_y_pixel = new_center_y + dy
 
-        # Convert back to percentage for selected resolution
         new_points.append({
             "id": p["id"],
             "x_perc": round(new_x_pixel / image_size, 5),
@@ -81,28 +72,35 @@ def shift_grid(original_points, new_center_x, new_center_y, image_size):
 
 st.title("Isotropic Grid Generator")
 
+# Load grids safely
+try:
+    dmp_data, hdt_data = load_grids()
+except Exception as e:
+    st.error("Failed to load grid templates.")
+    st.exception(e)
+    st.stop()
+
 # ---- ID INPUT ----
+
 id_eye = st.text_input("ID_eye (e.g., 21222_OD)")
 
-# ---- RESOLUTION SELECTOR ----
+# ---- RESOLUTION ----
+
 resolution_mode = st.radio(
     "Select Scan Mode",
     ["High Resolution (1536x1536)", "High Speed (768x768)"]
 )
 
-if resolution_mode == "High Resolution (1536x1536)":
-    IMAGE_SIZE = 1536
-else:
-    IMAGE_SIZE = 768
+IMAGE_SIZE = 1536 if "1536" in resolution_mode else 768
 
-# ---- COORDINATE INPUTS (INTEGER ONLY) ----
+# ---- CENTER INPUTS ----
+
 new_center_x = st.number_input(
     "New Center X",
     min_value=0,
     max_value=IMAGE_SIZE,
     value=IMAGE_SIZE // 2,
-    step=1,
-    format="%d"
+    step=1
 )
 
 new_center_y = st.number_input(
@@ -110,19 +108,17 @@ new_center_y = st.number_input(
     min_value=0,
     max_value=IMAGE_SIZE,
     value=IMAGE_SIZE // 2,
-    step=1,
-    format="%d"
+    step=1
 )
 
 st.divider()
 
 # --------------------------------------------------
-# GENERATE + DOWNLOAD (ONE CLICK)
+# GENERATE FILES
 # --------------------------------------------------
 
 if id_eye:
 
-    # Generate both grids
     new_dmp = shift_grid(
         dmp_data["points"],
         new_center_x,
@@ -137,14 +133,15 @@ if id_eye:
         IMAGE_SIZE
     )
 
-    # Create ZIP in memory
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+
         zf.writestr(
             f"{id_eye}_DMP03.json",
             json.dumps(new_dmp, indent=2)
         )
+
         zf.writestr(
             f"{id_eye}_HDT03.json",
             json.dumps(new_hdt, indent=2)
@@ -153,7 +150,7 @@ if id_eye:
     zip_buffer.seek(0)
 
     st.download_button(
-        label="Generate & Download Both Files",
+        "Generate & Download Both Files",
         data=zip_buffer,
         file_name=f"{id_eye}_grids.zip",
         mime="application/zip"
