@@ -19,11 +19,18 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).parent
 
-with open(BASE_DIR / "DMP03.json", "r") as f:
-    dmp_data = json.load(f)
+@st.cache_data
+def load_grids():
+    with open(BASE_DIR / "DMP03.json") as f:
+        dmp = json.load(f)
 
-with open(BASE_DIR / "HDT03.json", "r") as f:
-    hdt_data = json.load(f)
+    with open(BASE_DIR / "HDT03.json") as f:
+        hdt = json.load(f)
+
+    return dmp, hdt
+
+
+dmp_data, hdt_data = load_grids()
 
 
 # --------------------------------------------------
