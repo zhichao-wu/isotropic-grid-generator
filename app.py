@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).parent))
-
 import streamlit as st
 import json
 import zipfile
@@ -20,10 +15,14 @@ ORIGINAL_CENTER = 768  # Grid was originally centered at 768,768
 # LOAD BASE GRIDS
 # --------------------------------------------------
 
-with open("DMP03.json", "r") as f:
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+
+with open(BASE_DIR / "DMP03.json", "r") as f:
     dmp_data = json.load(f)
 
-with open("HDT03.json", "r") as f:
+with open(BASE_DIR / "HDT03.json", "r") as f:
     hdt_data = json.load(f)
 
 
