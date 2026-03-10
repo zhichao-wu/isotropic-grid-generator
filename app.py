@@ -10,6 +10,7 @@ from pathlib import Path
 
 ORIGINAL_IMAGE_SIZE = 1536
 ORIGINAL_CENTER = 768
+ORIGINAL_CENTER_PERC = ORIGINAL_CENTER / ORIGINAL_IMAGE_SIZE
 
 BASE_DIR = Path(__file__).parent
 
@@ -29,34 +30,26 @@ def load_grids():
 
 
 # --------------------------------------------------
-# GRID SHIFT FUNCTION
+# GRID SHIFT FUNCTION (SAFE VERSION)
 # --------------------------------------------------
 
 def shift_grid(original_points, new_center_x, new_center_y, image_size):
 
-    scale_factor = image_size / ORIGINAL_IMAGE_SIZE
-    scaled_old_center = ORIGINAL_CENTER * scale_factor
+    # Convert new center into percentage coordinates
+    new_center_perc_x = new_center_x / image_size
+    new_center_perc_y = new_center_y / image_size
 
     new_points = []
 
     for p in original_points:
 
-        old_x_pixel = p["x_perc"] * ORIGINAL_IMAGE_SIZE
-        old_y_pixel = p["y_perc"] * ORIGINAL_IMAGE_SIZE
-
-        old_x_pixel *= scale_factor
-        old_y_pixel *= scale_factor
-
-        dx = old_x_pixel - scaled_old_center
-        dy = old_y_pixel - scaled_old_center
-
-        new_x_pixel = new_center_x + dx
-        new_y_pixel = new_center_y + dy
+        dx = p["x_perc"] - ORIGINAL_CENTER_PERC
+        dy = p["y_perc"] - ORIGINAL_CENTER_PERC
 
         new_points.append({
             "id": p["id"],
-            "x_perc": round(new_x_pixel / image_size, 5),
-            "y_perc": round(new_y_pixel / image_size, 5)
+            "x_perc": round(new_center_perc_x + dx, 5),
+            "y_perc": round(new_center_perc_y + dy, 5)
         })
 
     return {
