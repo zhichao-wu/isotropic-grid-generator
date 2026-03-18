@@ -19,23 +19,33 @@ BASE_DIR = Path(__file__).parent
 # --------------------------------------------------
 
 @st.cache_data
-def load_grids():
-    with open(BASE_DIR / "DMP03.json") as f:
-        dmp = json.load(f)
+def load_grids(protocol):
 
-    with open(BASE_DIR / "HDT03.json") as f:
-        hdt = json.load(f)
+    if protocol == "Protocol A":
+        with open(BASE_DIR / "DMP12.json") as f:
+            dmp = json.load(f)
+        return dmp, None
 
-    return dmp, hdt
+    elif protocol == "Protocol B":
+        with open(BASE_DIR / "DMP16.json") as f:
+            dmp = json.load(f)
+        return dmp, None
 
+    elif protocol == "Protocol C":
+        with open(BASE_DIR / "DMP03.json") as f:
+            dmp = json.load(f)
+
+        with open(BASE_DIR / "HDT03.json") as f:
+            hdt = json.load(f)
+
+        return dmp, hdt
 
 # --------------------------------------------------
-# GRID SHIFT FUNCTION (SAFE VERSION)
+# GRID SHIFT FUNCTION
 # --------------------------------------------------
 
 def shift_grid(original_points, new_center_x, new_center_y, image_size):
 
-    # Convert new center into percentage coordinates
     new_center_perc_x = new_center_x / image_size
     new_center_perc_y = new_center_y / image_size
 
@@ -58,24 +68,30 @@ def shift_grid(original_points, new_center_x, new_center_y, image_size):
         "points": new_points
     }
 
-
 # --------------------------------------------------
 # UI
 # --------------------------------------------------
 
 st.title("Isotropic Grid Generator")
 
-# Load grids safely
+# ---- ID INPUT ----
+
+id_eye = st.text_input("ID_eye (e.g., 21222_OD)")
+
+# ---- NEW PROTOCOL SELECTOR ----
+
+protocol = st.radio(
+    "Selected Protocol:",
+    ["Protocol A", "Protocol B", "Protocol C"]
+)
+
+# Load grids safely based on protocol
 try:
-    dmp_data, hdt_data = load_grids()
+    dmp_data, hdt_data = load_grids(protocol)
 except Exception as e:
     st.error("Failed to load grid templates.")
     st.exception(e)
     st.stop()
-
-# ---- ID INPUT ----
-
-id_eye = st.text_input("ID_eye (e.g., 21222_OD)")
 
 # ---- RESOLUTION ----
 
@@ -112,38 +128,54 @@ st.divider()
 
 if id_eye:
 
-    new_dmp = shift_grid(
-        dmp_data["points"],
-        new_center_x,
-        new_center_y,
-        IMAGE_SIZE
-    )
-
-    new_hdt = shift_grid(
-        hdt_data["points"],
-        new_center_x,
-        new_center_y,
-        IMAGE_SIZE
-    )
-
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
 
-        zf.writestr(
-            f"{id_eye}_DMP03.json",
-            json.dumps(new_dmp, indent=2)
+        # ---- DMP (ALL PROTOCOLS) ----
+        new_dmp = shift_grid(
+            dmp_data["points"],
+            new_center_x,
+            new_center_y,
+            IMAGE_SIZE
         )
 
-        zf.writestr(
-            f"{id_eye}_HDT03.json",
-            json.dumps(new_hdt, indent=2)
-        )
+        if protocol == "Protocol A":
+            zf.writestr(
+                f"{id_eye}_DMP12.json",
+                json.dumps(new_dmp, indent=2)
+            )
+
+        elif protocol == "Protocol B":
+            zf.writestr(
+                f"{id_eye}_DMP16.json",
+                json.dumps(new_dmp, indent=2)
+            )
+
+        elif protocol == "Protocol C":
+
+            zf.writestr(
+                f"{id_eye}_DMP03.json",
+                json.dumps(new_dmp, indent=2)
+            )
+
+            # ---- HDT ONLY FOR PROTOCOL C ----
+            new_hdt = shift_grid(
+                hdt_data["points"],
+                new_center_x,
+                new_center_y,
+                IMAGE_SIZE
+            )
+
+            zf.writestr(
+                f"{id_eye}_HDT03.json",
+                json.dumps(new_hdt, indent=2)
+            )
 
     zip_buffer.seek(0)
 
     st.download_button(
-        "Generate & Download Both Files",
+        "Generate & Download Files",
         data=zip_buffer,
         file_name=f"{id_eye}_grids.zip",
         mime="application/zip"
