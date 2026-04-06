@@ -21,13 +21,8 @@ BASE_DIR = Path(__file__).parent
 @st.cache_data
 def load_grids(protocol):
 
-    if protocol == "Protocol A":
+    if protocol in ["Protocol A", "Protocol B"]:
         with open(BASE_DIR / "DMP12.json") as f:
-            dmp = json.load(f)
-        return dmp, None
-
-    elif protocol == "Protocol B":
-        with open(BASE_DIR / "DMP16.json") as f:
             dmp = json.load(f)
         return dmp, None
 
@@ -78,7 +73,7 @@ st.title("Isotropic Grid Generator")
 
 id_eye = st.text_input("ID_eye (e.g., 21222_OD)")
 
-# ---- NEW PROTOCOL SELECTOR ----
+# ---- PROTOCOL SELECTOR ----
 
 protocol = st.radio(
     "Selected Protocol:",
@@ -140,15 +135,9 @@ if id_eye:
             IMAGE_SIZE
         )
 
-        if protocol == "Protocol A":
+        if protocol in ["Protocol A", "Protocol B"]:
             zf.writestr(
                 f"{id_eye}_DMP12.json",
-                json.dumps(new_dmp, indent=2)
-            )
-
-        elif protocol == "Protocol B":
-            zf.writestr(
-                f"{id_eye}_DMP16.json",
                 json.dumps(new_dmp, indent=2)
             )
 
