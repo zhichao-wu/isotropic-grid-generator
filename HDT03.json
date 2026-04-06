@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "label": "Custom Test",
+  "label": "HDT03",
   "points": [
 {"id":1, "x_perc": 0.48333, "y_perc": 0.55000},
 {"id":2, "x_perc": 0.50000, "y_perc": 0.55000},
