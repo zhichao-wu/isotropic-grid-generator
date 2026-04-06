@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "label": "Custom Test",
+  "label": "DMP03",
   "points": [
 {"id":1, "x_perc": 0.48000, "y_perc": 0.54667},
 {"id":2, "x_perc": 0.48667, "y_perc": 0.54667},
