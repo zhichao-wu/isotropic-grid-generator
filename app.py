@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).parent
 @st.cache_data
 def load_grids(protocol):
 
+    # Protocol A and B both use DMP12
     if protocol in ["Protocol A", "Protocol B"]:
         with open(BASE_DIR / "DMP12.json") as f:
             dmp = json.load(f)
@@ -36,10 +37,10 @@ def load_grids(protocol):
         return dmp, hdt
 
 # --------------------------------------------------
-# GRID SHIFT FUNCTION
+# GRID SHIFT FUNCTION (NOW WITH DYNAMIC LABEL)
 # --------------------------------------------------
 
-def shift_grid(original_points, new_center_x, new_center_y, image_size):
+def shift_grid(original_points, new_center_x, new_center_y, image_size, label):
 
     new_center_perc_x = new_center_x / image_size
     new_center_perc_y = new_center_y / image_size
@@ -59,7 +60,7 @@ def shift_grid(original_points, new_center_x, new_center_y, image_size):
 
     return {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "label": "Custom Test",
+        "label": label,
         "points": new_points
     }
 
@@ -127,14 +128,22 @@ if id_eye:
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
 
-        # ---- DMP (ALL PROTOCOLS) ----
+        # ---- DETERMINE LABEL ----
+        if protocol in ["Protocol A", "Protocol B"]:
+            dmp_label = "DMP12"
+        elif protocol == "Protocol C":
+            dmp_label = "DMP03"
+
+        # ---- DMP ----
         new_dmp = shift_grid(
             dmp_data["points"],
             new_center_x,
             new_center_y,
-            IMAGE_SIZE
+            IMAGE_SIZE,
+            dmp_label
         )
 
+        # ---- WRITE DMP ----
         if protocol in ["Protocol A", "Protocol B"]:
             zf.writestr(
                 f"{id_eye}_DMP12.json",
@@ -153,7 +162,8 @@ if id_eye:
                 hdt_data["points"],
                 new_center_x,
                 new_center_y,
-                IMAGE_SIZE
+                IMAGE_SIZE,
+                "HDT03"
             )
 
             zf.writestr(
