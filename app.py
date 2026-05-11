@@ -25,19 +25,45 @@ def load_grids(protocol):
     if protocol in ["Protocol A", "Protocol B"]:
         with open(BASE_DIR / "DMP12.json") as f:
             dmp = json.load(f)
-        return dmp, None
 
+        return {
+            "dmp": dmp,
+            "dmp_label": "DMP12",
+            "dmp_filename": "DMP12.json",
+            "hdt": None
+        }
+
+    # Protocol C uses DMP03 + HDT03
     elif protocol == "Protocol C":
+
         with open(BASE_DIR / "DMP03.json") as f:
             dmp = json.load(f)
 
         with open(BASE_DIR / "HDT03.json") as f:
             hdt = json.load(f)
 
-        return dmp, hdt
+        return {
+            "dmp": dmp,
+            "dmp_label": "DMP03",
+            "dmp_filename": "DMP03.json",
+            "hdt": hdt
+        }
+
+    # FINS2 uses DMP08
+    elif protocol == "FINS2":
+
+        with open(BASE_DIR / "DMP08.json") as f:
+            dmp = json.load(f)
+
+        return {
+            "dmp": dmp,
+            "dmp_label": "DMP08",
+            "dmp_filename": "DMP08.json",
+            "hdt": None
+        }
 
 # --------------------------------------------------
-# GRID SHIFT FUNCTION (NOW WITH DYNAMIC LABEL)
+# GRID SHIFT FUNCTION
 # --------------------------------------------------
 
 def shift_grid(original_points, new_center_x, new_center_y, image_size, label):
@@ -78,12 +104,19 @@ id_eye = st.text_input("ID_eye (e.g., 21222_OD)")
 
 protocol = st.radio(
     "Selected Protocol:",
-    ["Protocol A", "Protocol B", "Protocol C"]
+    ["Protocol A", "Protocol B", "Protocol C", "FINS2"]
 )
 
-# Load grids safely based on protocol
+# ---- LOAD GRID FILES ----
+
 try:
-    dmp_data, hdt_data = load_grids(protocol)
+    grid_config = load_grids(protocol)
+
+    dmp_data = grid_config["dmp"]
+    dmp_label = grid_config["dmp_label"]
+    dmp_filename = grid_config["dmp_filename"]
+    hdt_data = grid_config["hdt"]
+
 except Exception as e:
     st.error("Failed to load grid templates.")
     st.exception(e)
@@ -128,13 +161,8 @@ if id_eye:
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
 
-        # ---- DETERMINE LABEL ----
-        if protocol in ["Protocol A", "Protocol B"]:
-            dmp_label = "DMP12"
-        elif protocol == "Protocol C":
-            dmp_label = "DMP03"
+        # ---- GENERATE DMP GRID ----
 
-        # ---- DMP ----
         new_dmp = shift_grid(
             dmp_data["points"],
             new_center_x,
@@ -143,21 +171,19 @@ if id_eye:
             dmp_label
         )
 
-        # ---- WRITE DMP ----
-        if protocol in ["Protocol A", "Protocol B"]:
-            zf.writestr(
-                f"{id_eye}_DMP12.json",
-                json.dumps(new_dmp, indent=2)
-            )
+        # ---- WRITE DMP FILE ----
 
-        elif protocol == "Protocol C":
+        output_dmp_filename = f"{id_eye}_{dmp_label}.json"
 
-            zf.writestr(
-                f"{id_eye}_DMP03.json",
-                json.dumps(new_dmp, indent=2)
-            )
+        zf.writestr(
+            output_dmp_filename,
+            json.dumps(new_dmp, indent=2)
+        )
 
-            # ---- HDT ONLY FOR PROTOCOL C ----
+        # ---- HDT ONLY FOR PROTOCOL C ----
+
+        if protocol == "Protocol C" and hdt_data is not None:
+
             new_hdt = shift_grid(
                 hdt_data["points"],
                 new_center_x,
